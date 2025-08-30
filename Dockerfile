@@ -12,4 +12,4 @@ USER root
 EXPOSE 443
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["stunnel", "/etc/stunnel/stunnel.conf"]
+CMD ["stunnel", "/app/etc/stunnel.conf"]

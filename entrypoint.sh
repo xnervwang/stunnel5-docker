@@ -14,6 +14,8 @@ set -eu
 : "${STUNNEL_VERIFY:=2}"                  # 0..4
 : "${STUNNEL_FIPS:=no}"                   # yes/no
 : "${STUNNEL_DEBUG:=info}"                # emerg..debug
+: "${STUNNEL_LOGID:=sequential}"          # none|sequential|unique|thread(,process*)
+: "${STUNNEL_OUTPUT:=/dev/stdout}"        # 输出目标：stdout/stderr/文件路径
 : "${STUNNEL_OPTIONS:=}"                  # 逗号分隔 e.g. NO_SSLv3,NO_TLSv1
 : "${STUNNEL_CIPHERS:=}"
 : "${STUNNEL_CURVES:=}"
@@ -37,6 +39,8 @@ fi
 {
   echo "foreground = ${STUNNEL_FOREGROUND}"
   echo "debug = ${STUNNEL_DEBUG}"
+  echo "output = ${STUNNEL_OUTPUT}"      # 日志输出到 stdout/stderr/文件
+  echo "logId = ${STUNNEL_LOGID}"        # 给每个连接编号，方便排障
   [ "${STUNNEL_FIPS}" = "yes" ] && echo "fips = yes"
 
   [ -n "${CERT}" ]   && echo "cert = ${CERT}"

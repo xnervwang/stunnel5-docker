@@ -5,7 +5,7 @@ set -eu
 : "${SERVICE_NAME:=service}"
 : "${CLIENT:=no}"                 # yes/no
 : "${ACCEPT:=0.0.0.0:443}"
-: "${CONNECT:=127.0.0.1:8371}"
+: "${CONNECT:=127.0.0.1:8386}"
 
 : "${CERT:=/app/etc/stunnel.pem}"
 : "${KEY:=${CERT}}"

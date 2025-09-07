@@ -7,6 +7,8 @@ RUN apk add --no-cache stunnel su-exec libcap-setcap \
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY stunnel5-https-proxy.conf.template /app/etc/stunnel5-https-proxy.conf.template
+COPY stunnel5-mtls-server.conf.template /app/etc/stunnel5-mtls-server.conf.template
 
 USER root
 EXPOSE 443

@@ -1,0 +1,16 @@
+foreground = {{FOREGROUND}}
+debug = {{DEBUG}}
+output = {{OUTPUT}}
+logId = {{LOGID}}
+
+[{{SERVICE_NAME}}]
+client  = no
+accept  = {{ACCEPT}}
+connect = {{CONNECT}}
+
+; 服务端证书和私钥
+cert = {{CERT}}
+key  = {{KEY}}
+
+; 浏览器端不需要客户端证书
+verify = 0

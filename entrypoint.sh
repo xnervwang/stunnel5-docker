@@ -1,77 +1,76 @@
 #!/usr/bin/env sh
 set -eu
 
-# —— 基本 ENV（按需覆盖；证书默认 /app/etc/stunnel.pem）——
-: "${SERVICE_NAME:=service}"
-: "${CLIENT:=no}"                 # yes/no
-: "${ACCEPT:=0.0.0.0:443}"
-: "${CONNECT:=127.0.0.1:8386}"
+# ===== 必填 =====
+: "${MODE:?ERROR: MODE is required (mtls-server|https-proxy)}"
+: "${SERVICE_NAME:?ERROR: SERVICE_NAME is required}"
+: "${ACCEPT:?ERROR: ACCEPT is required (e.g., 0.0.0.0:443)}"
+: "${CONNECT:?ERROR: CONNECT is required (e.g., 127.0.0.1:8080)}"
+: "${CERT:?ERROR: CERT is required (path to server certificate)}"
+: "${KEY:?ERROR: KEY is required (path to private key)}"
 
-: "${CERT:=/app/etc/stunnel.pem}"
-: "${KEY:=${CERT}}"
-: "${CAFILE:=${CERT}}"
+# 只有 mTLS 模式才要求 CAFILE
+if [ "${MODE}" = "mtls-server" ]; then
+  : "${CAFILE:?ERROR: CAFILE is required in mtls-server mode (path to CA for client cert validation)}"
+fi
 
-: "${STUNNEL_VERIFY:=2}"                  # 0..4
-: "${STUNNEL_FIPS:=no}"                   # yes/no
-: "${STUNNEL_DEBUG:=info}"                # emerg..debug
-: "${STUNNEL_LOGID:=sequential}"          # none|sequential|unique|thread(,process*)
-: "${STUNNEL_OUTPUT:=/dev/stdout}"        # 输出目标：stdout/stderr/文件路径
-: "${STUNNEL_OPTIONS:=}"                  # 逗号分隔 e.g. NO_SSLv3,NO_TLSv1
-: "${STUNNEL_CIPHERS:=}"
-: "${STUNNEL_CURVES:=}"
-: "${STUNNEL_EXTRA:=}"
-: "${STUNNEL_FOREGROUND:=yes}"
+# ===== 可选 =====
+: "${DEBUG:=info}"
+: "${LOGID:=sequential}"
+: "${OUTPUT:=/dev/stdout}"
+: "${FOREGROUND:=yes}"
 : "${RUN_AS_ROOT:=no}"
+
+: "${OPTIONS:=}"   # e.g. NO_SSLv3,NO_TLSv1
+: "${CIPHERS:=}"
+: "${CURVES:=}"
+: "${EXTRA:=}"
 
 CONF="/app/etc/stunnel.conf"
 
-# —— 基础校验 ——
-[ -n "${ACCEPT}" ]  || { echo "ERROR: ACCEPT required" >&2; exit 1; }
-[ -n "${CONNECT}" ] || { echo "ERROR: CONNECT required" >&2; exit 1; }
-
-# 服务端模式必须有证书与私钥（由外部挂载提供）
-if [ "${CLIENT}" = "no" ]; then
-  [ -s "${CERT}" ] || { echo "ERROR: missing CERT file: ${CERT}" >&2; exit 1; }
-  [ -s "${KEY}" ]  || { echo "ERROR: missing KEY file: ${KEY}"   >&2; exit 1; }
+# ===== 检查文件 =====
+[ -s "${CERT}" ] || { echo "ERROR: missing CERT: ${CERT}" >&2; exit 1; }
+[ -s "${KEY}"  ] || { echo "ERROR: missing KEY: ${KEY}"   >&2; exit 1; }
+if [ "${MODE}" = "mtls-server" ]; then
+  [ -s "${CAFILE}" ] || { echo "ERROR: missing CAFILE: ${CAFILE}" >&2; exit 1; }
 fi
 
-# —— 生成配置（stdout 日志；不写 pid/log 文件）——
+# ===== 模板选择 =====
+case "${MODE}" in
+  mtls-server) TEMPLATE="/app/etc/stunnel5-mtls-server.conf.template" ;;
+  https-proxy) TEMPLATE="/app/etc/stunnel5-https-proxy.conf.template" ;;
+  *) echo "ERROR: unknown MODE='${MODE}'" >&2; exit 1 ;;
+esac
+
+# ===== 渲染 =====
+TMP="$(mktemp)"
+sed \
+  -e "s|{{FOREGROUND}}|${FOREGROUND}|g" \
+  -e "s|{{DEBUG}}|${DEBUG}|g" \
+  -e "s|{{OUTPUT}}|${OUTPUT}|g" \
+  -e "s|{{LOGID}}|${LOGID}|g" \
+  -e "s|{{SERVICE_NAME}}|${SERVICE_NAME}|g" \
+  -e "s|{{ACCEPT}}|${ACCEPT}|g" \
+  -e "s|{{CONNECT}}|${CONNECT}|g" \
+  -e "s|{{CERT}}|${CERT}|g" \
+  -e "s|{{KEY}}|${KEY}|g" \
+  -e "s|{{CAFILE}}|${CAFILE:-}|g" \
+  "${TEMPLATE}" > "${TMP}"
+
+# 追加可选调优项
 {
-  echo "foreground = ${STUNNEL_FOREGROUND}"
-  echo "debug = ${STUNNEL_DEBUG}"
-  echo "output = ${STUNNEL_OUTPUT}"      # 日志输出到 stdout/stderr/文件
-  echo "logId = ${STUNNEL_LOGID}"        # 给每个连接编号，方便排障
-  [ "${STUNNEL_FIPS}" = "yes" ] && echo "fips = yes"
+  [ -n "${OPTIONS}" ] && { IFS=','; for o in ${OPTIONS}; do echo "options = ${o}"; done; unset IFS; }
+  [ -n "${CIPHERS}" ] && echo "ciphers = ${CIPHERS}"
+  [ -n "${CURVES}"  ] && echo "curves = ${CURVES}"
+  [ -n "${EXTRA}"   ] && printf "%s\n" "${EXTRA}"
+} >> "${TMP}"
 
-  [ -n "${CERT}" ]   && echo "cert = ${CERT}"
-  [ -n "${KEY}" ]    && echo "key = ${KEY}"
-  [ -n "${CAFILE}" ] && echo "CAfile = ${CAFILE}"
-  [ -n "${STUNNEL_VERIFY}" ] && echo "verify = ${STUNNEL_VERIFY}"
+mv "${TMP}" "${CONF}"
 
-  [ -n "${STUNNEL_CIPHERS}" ] && echo "ciphers = ${STUNNEL_CIPHERS}"
-  [ -n "${STUNNEL_CURVES}" ]  && echo "curves = ${STUNNEL_CURVES}"
+echo "=== /app/etc/stunnel.conf (MODE=${MODE}) ==="
+sed 's/^\(\s*key\s*=\s*\).*/\1****/' "${CONF}" || true
+echo "==========================================="
 
-  if [ -n "${STUNNEL_OPTIONS}" ]; then
-    IFS=','; for opt in ${STUNNEL_OPTIONS}; do echo "options = ${opt}"; done; unset IFS
-  fi
-
-  echo
-  echo "[${SERVICE_NAME}]"
-  echo "client  = ${CLIENT}"
-  echo "accept  = ${ACCEPT}"
-  echo "connect = ${CONNECT}"
-
-  if [ -n "${STUNNEL_EXTRA}" ]; then
-    echo
-    printf "%s\n" "${STUNNEL_EXTRA}"
-  fi
-} > "${CONF}"
-
-echo "=== /app/etc/stunnel.conf ==="
-sed 's/^key = .*/key = ****/' "${CONF}" || true
-echo "================================="
-
-# —— 运行身份：默认降权到 stunnel 用户；需要 root 时可开关 —— 
 if [ "${RUN_AS_ROOT}" = "yes" ]; then
   exec "$@"
 else

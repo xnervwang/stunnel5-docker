@@ -1,0 +1,17 @@
+foreground = {{FOREGROUND}}
+debug = {{DEBUG}}
+output = {{OUTPUT}}
+logId = {{LOGID}}
+
+[{{SERVICE_NAME}}]
+client  = no
+accept  = {{ACCEPT}}
+connect = {{CONNECT}}
+
+; 服务端证书和私钥
+cert = {{CERT}}
+key  = {{KEY}}
+
+; 用于校验客户端证书的 CA
+CAfile = {{CAFILE}}
+verify = 2

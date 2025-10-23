@@ -13,4 +13,4 @@ cert = {{CERT}}
 key  = {{KEY}}
 
 ; 浏览器端不需要客户端证书
-; verify = 0
+verify = 0

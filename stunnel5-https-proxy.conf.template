@@ -13,4 +13,10 @@ cert = {{CERT}}
 key  = {{KEY}}
 
 ; 浏览器端不需要客户端证书
-verify = 0
+; level 0 - request and ignore peer certificate
+; level 1 - verify peer certificate if present
+; level 2 - verify peer certificate
+; level 3 - verify peer with locally installed certificate
+; level 4 - ignore CA chain and only verify peer certificate
+; default - no verify
+; verify = 0

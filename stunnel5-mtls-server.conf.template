@@ -8,10 +8,10 @@ client  = no
 accept  = {{ACCEPT}}
 connect = {{CONNECT}}
 
-; 服务端证书和私钥
+; Server certificate and private key
 cert = {{CERT}}
-key  = {{KEY}}
+key = {{KEY}}
 
-; 用于校验客户端证书的 CA
+; CA file for verifying client certificates
 CAfile = {{CAFILE}}
 verify = 2

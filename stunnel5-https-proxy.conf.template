@@ -8,11 +8,11 @@ client  = no
 accept  = {{ACCEPT}}
 connect = {{CONNECT}}
 
-; 服务端证书和私钥
+; Server certificate and private key
 cert = {{CERT}}
-key  = {{KEY}}
+key = {{KEY}}
 
-; 浏览器端不需要客户端证书
+; Browser clients don't require client certificates
 ; level 0 - request and ignore peer certificate
 ; level 1 - verify peer certificate if present
 ; level 2 - verify peer certificate

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-# ===== 必填 =====
+# ===== Required =====
 : "${MODE:?ERROR: MODE is required (mtls-server|https-proxy)}"
 : "${SERVICE_NAME:?ERROR: SERVICE_NAME is required}"
 : "${ACCEPT:?ERROR: ACCEPT is required (e.g., 0.0.0.0:443)}"
@@ -9,12 +9,12 @@ set -eu
 : "${CERT:?ERROR: CERT is required (path to server certificate)}"
 : "${KEY:?ERROR: KEY is required (path to private key)}"
 
-# 只有 mTLS 模式才要求 CAFILE
+# Only mTLS mode requires CAFILE
 if [ "${MODE}" = "mtls-server" ]; then
   : "${CAFILE:?ERROR: CAFILE is required in mtls-server mode (path to CA for client cert validation)}"
 fi
 
-# ===== 可选 =====
+# ===== Optional =====
 : "${DEBUG:=info}"
 : "${LOGID:=sequential}"
 : "${OUTPUT:=/dev/stdout}"
@@ -28,21 +28,21 @@ fi
 
 CONF="/app/etc/stunnel.conf"
 
-# ===== 检查文件 =====
+# ===== Check files =====
 [ -s "${CERT}" ] || { echo "ERROR: missing CERT: ${CERT}" >&2; exit 1; }
 [ -s "${KEY}"  ] || { echo "ERROR: missing KEY: ${KEY}"   >&2; exit 1; }
 if [ "${MODE}" = "mtls-server" ]; then
   [ -s "${CAFILE}" ] || { echo "ERROR: missing CAFILE: ${CAFILE}" >&2; exit 1; }
 fi
 
-# ===== 模板选择 =====
+# ===== Template selection =====
 case "${MODE}" in
   mtls-server) TEMPLATE="/app/etc/stunnel5-mtls-server.conf.template" ;;
   https-proxy) TEMPLATE="/app/etc/stunnel5-https-proxy.conf.template" ;;
   *) echo "ERROR: unknown MODE='${MODE}'" >&2; exit 1 ;;
 esac
 
-# ===== 渲染 =====
+# ===== Render =====
 TMP="$(mktemp)"
 sed \
   -e "s|{{FOREGROUND}}|${FOREGROUND}|g" \
@@ -57,7 +57,7 @@ sed \
   -e "s|{{CAFILE}}|${CAFILE:-}|g" \
   "${TEMPLATE}" > "${TMP}"
 
-# 追加可选调优项
+# Append optional tuning options
 {
   [ -n "${OPTIONS}" ] && { IFS=','; for o in ${OPTIONS}; do echo "options = ${o}"; done; unset IFS; }
   [ -n "${CIPHERS}" ] && echo "ciphers = ${CIPHERS}"
